@@ -16,11 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require 'vendor/autoload.php';
 
-$conn = new mysqli('localhost', 'root', '', 'eccms_db');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require_once('db.php');
 
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true);

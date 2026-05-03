@@ -13,11 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require 'vendor/autoload.php';
 
-$conn = new mysqli('localhost', 'root', '', 'eccms_db');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require_once('db.php');
 
 $body = json_decode(file_get_contents('php://input'), true);
 $complaint_code = trim($body['complaint_code'] ?? '');

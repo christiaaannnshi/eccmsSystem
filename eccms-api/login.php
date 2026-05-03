@@ -12,11 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$conn = new mysqli('localhost', 'root', '', 'eccms_db');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require_once('db.php');
 
 // accept either JSON payload or traditional form data
 $input = file_get_contents('php://input');
