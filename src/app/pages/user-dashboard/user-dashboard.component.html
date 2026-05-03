@@ -1,0 +1,516 @@
+<div class="dashboard-container">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="profile-avatar-wrap">
+      <img *ngIf="savedProfileImage" [src]="savedProfileImage" alt="User Profile Picture" class="profile-avatar">
+      <div *ngIf="!savedProfileImage" class="profile-avatar profile-avatar-placeholder">👤</div>
+      <p class="profile-name" *ngIf="savedDisplayName">{{ savedDisplayName }}</p>
+    </div>
+
+  <button type="button" class="menu-btn" [class.active]="currentView === 'file'" (click)="showFileComplaint()">File a Complaint</button>
+<button type="button" class="menu-btn" [class.active]="currentView === 'status'" (click)="showStatus()">Status</button>
+<button type="button" class="menu-btn" [class.active]="currentView === 'profile'" (click)="showProfileSetup()">Profile</button>
+<button type="button" class="menu-btn notification-menu-btn" [class.active]="currentView === 'notifications'" (click)="showNotifications()">
+  Notifications
+  <span class="notification-menu-badge" *ngIf="notificationCount > 0">{{ notificationCount > 99 ? '99+' : notificationCount }}</span>
+</button>
+  <button type="button" class="menu-btn" (click)="openHelpModal()">Help</button>
+  <button type="button" class="menu-btn" (click)="openAboutModal()">About us</button>
+
+    <a class="contact-link" (click)="openContactModal()">Contact Us</a>
+    
+    <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+
+  </aside>
+
+
+  <!-- MAIN CONTENT -->
+  <main class="content">
+
+    <div class="dashboard-top-logos" aria-label="System logos">
+      <img src="assets/eccmslogo.png" alt="ECCMS Logo" class="dashboard-top-logo" />
+      <img src="assets/icpep.png" alt="ICPEP Logo" class="dashboard-top-logo" />
+    </div>
+
+    <h1 class="title">
+      Electronic City Complaint Management System
+    </h1>
+
+    <p class="subtitle">
+      Submit your concerns or reports to help improve safety, discipline,
+      and community welfare. All complaints are treated with confidentiality.
+    </p>
+
+
+    <!-- FORM CARD -->
+    <div class="card" *ngIf="currentView === 'file'">
+
+      <h2><span class="heading-highlight">File a Complaint</span></h2>
+      <p class="small-text">
+        Please fill out the form below to report a concern or issue within the barangay.
+      </p>
+
+      <!-- Popup Notification Overlay -->
+      <div class="popup-backdrop" *ngIf="submitSuccess || submitError">
+        <div class="popup-box" [ngClass]="submitSuccess ? 'popup-success' : 'popup-error'">
+          <div class="popup-icon">
+            <span *ngIf="submitSuccess">&#10003;</span>
+            <span *ngIf="submitError">&#10007;</span>
+          </div>
+          <h4 class="popup-title">{{ submitSuccess ? 'Complaint Filed!' : 'Submission Failed' }}</h4>
+          <p class="popup-message">{{ message }}</p>
+          <button class="popup-close-btn" (click)="submitSuccess = false; submitError = false">
+            {{ submitSuccess ? 'Done' : 'Try Again' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- CONNECTED FORM -->
+     <form
+  class="complaint-form"
+  [formGroup]="complaintForm"
+  (ngSubmit)="submitComplaint()"
+  novalidate
+>
+
+        <!-- Category -->
+        <label>Category</label>
+        <select formControlName="category">
+          <option value="">Select the type of complaint:</option>
+          <option value="Noise">Noise</option>
+          <option value="Road Issue">Road Issue</option>
+          <option value="Garbage">Garbage</option>
+          <option value="Illegal Parking">Illegal Parking</option>
+          <option value="Clogged Drainage">Clogged Drainage</option>
+          <option value="Others">Others</option>
+        </select>
+
+        <div class="custom-category-wrap" *ngIf="isOtherCategorySelected">
+          <label>Specify Category</label>
+          <input
+            type="text"
+            class="custom-category-input"
+            formControlName="customCategory"
+            placeholder="Enter the complaint category"
+          />
+          <p class="field-error" *ngIf="complaintForm.get('customCategory')?.touched && complaintForm.get('customCategory')?.invalid">
+            Please specify the complaint category.
+          </p>
+        </div>
+
+        <!-- Location -->
+        <label>Location</label>
+        <input
+          type="text"
+          formControlName="location"
+          placeholder="Specify where the incident occurred (e.g., barangay hall, street name, purok)"
+        />
+
+        <!-- Description -->
+        <label>Description</label>
+        <textarea
+          rows="5"
+          formControlName="description"
+          placeholder="Kindly explain your concern or report. Your detailed input will help the authorities take appropriate action."
+        ></textarea>
+
+        <label>Attach Picture (Optional)</label>
+        <div class="attach-wrap">
+          <div class="attach-actions">
+            <button type="button" class="attach-option-btn" (click)="openCameraCapture()">Take Photo</button>
+            <button type="button" class="attach-option-btn secondary" (click)="galleryInput.click()">Choose from Files/Photos</button>
+          </div>
+
+          <input
+            #galleryInput
+            class="hidden-file-input"
+            type="file"
+            accept="image/*"
+            (change)="onComplaintImageSelected($event)"
+          />
+
+          <p class="attach-help">Choose how to attach the image. Large images are optimized automatically before submission.</p>
+          <p class="attach-error" *ngIf="complaintImageError">{{ complaintImageError }}</p>
+          <img
+            *ngIf="complaintImagePreview"
+            [src]="complaintImagePreview"
+            alt="Complaint preview"
+            class="complaint-image-preview"
+          />
+        </div>
+
+        <div class="camera-modal-backdrop" *ngIf="cameraModalOpen" (click)="closeCameraModal()">
+          <div class="camera-modal" (click)="$event.stopPropagation()">
+            <h3>Take Photo</h3>
+            <p class="camera-help">Position the complaint clearly in the frame, then capture the image.</p>
+
+            <div class="camera-frame">
+              <video #cameraVideo autoplay playsinline muted></video>
+            </div>
+
+            <p class="attach-error" *ngIf="cameraError">{{ cameraError }}</p>
+
+            <div class="camera-actions">
+              <button type="button" class="attach-option-btn" (click)="captureComplaintPhoto()">Capture</button>
+              <button type="button" class="attach-option-btn secondary" (click)="closeCameraModal()">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+      <button type="submit" class="submit-btn">
+    Submit
+  </button>
+
+      </form>
+
+    </div>
+
+    <div class="card" *ngIf="currentView === 'status'">
+      <h2><span class="heading-highlight">Complaint Status</span></h2>
+      <p class="small-text">All complaints you submitted and their current status.</p>
+
+      <table class="status-table" *ngIf="userComplaints.length > 0; else noComplaints">
+        <thead>
+          <tr>
+            <th>Complaint Code</th>
+            <th>Category</th>
+            <th>Location</th>
+            <th>Date Submitted</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let complaint of paginatedComplaints">
+            <td>
+              <button
+                *ngIf="canReopenComplaint(complaint)"
+                type="button"
+                class="status-code-link-btn"
+                (click)="openReopenModal(complaint)"
+              >
+                {{ complaint.complaint_code }}
+              </button>
+              <span *ngIf="!canReopenComplaint(complaint)">{{ complaint.complaint_code }}</span>
+            </td>
+            <td>{{ complaint.category }}</td>
+            <td>{{ complaint.location }}</td>
+            <td>{{ complaint.created_at }}</td>
+            <td
+              [ngClass]="{
+                'status-reported': (complaint.status || '').toLowerCase() === 'reported',
+                'status-completed': (complaint.status || '').toLowerCase() === 'completed',
+                'status-reopened': (complaint.status || '').toLowerCase() === 'reopened'
+              }"
+            >
+              {{ complaint.status }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="status-pagination" *ngIf="userComplaints.length > 0">
+        <button
+          type="button"
+          class="status-page-btn"
+          [disabled]="isOnFirstComplaintsPage"
+          (click)="goToPreviousComplaintsPage()"
+        >
+          Previous
+        </button>
+        <span class="status-page-label">Page {{ currentComplaintsPage }} of {{ totalComplaintsPages }}</span>
+        <button
+          type="button"
+          class="status-page-btn"
+          [disabled]="isOnLastComplaintsPage"
+          (click)="goToNextComplaintsPage()"
+        >
+          Next
+        </button>
+      </div>
+
+      <ng-template #noComplaints>
+        <p class="small-text">No complaints submitted yet.</p>
+      </ng-template>
+
+      <div class="popup-backdrop" *ngIf="reopenModalOpen && selectedReopenComplaint">
+        <div class="popup-box popup-success reopen-popup">
+          <div class="popup-icon"><span>&#8635;</span></div>
+          <h4 class="popup-title">Reopen Complaint</h4>
+          <p class="popup-message">
+            Complaint Code: {{ selectedReopenComplaint.complaint_code }}<br><br>
+            Enter the reason why you want to reopen this completed complaint.
+          </p>
+
+          <textarea
+            class="reopen-reason-input"
+            rows="4"
+            [(ngModel)]="reopenReason"
+            placeholder="Type your reason for reopening"
+            [disabled]="reopenLoading"
+          ></textarea>
+
+          <p class="reopen-error" *ngIf="reopenError">{{ reopenError }}</p>
+          <p class="reopen-success" *ngIf="reopenSuccess">{{ reopenSuccess }}</p>
+
+          <div class="reopen-actions">
+            <button class="popup-close-btn" (click)="submitReopenComplaint()" [disabled]="reopenLoading">
+              {{ reopenLoading ? 'Reopening...' : 'Reopen Complaint' }}
+            </button>
+            <button class="reopen-cancel-btn" (click)="closeReopenModal()" [disabled]="reopenLoading">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" *ngIf="currentView === 'profile'">
+      <h2><span class="heading-highlight">Profile Setup</span></h2>
+      <p class="small-text">Set up your personal information for your account profile.</p>
+
+      <div class="popup-backdrop" *ngIf="profileSaved">
+        <div class="popup-box popup-success">
+          <div class="popup-icon">
+            <span>&#10003;</span>
+          </div>
+          <h4 class="popup-title">Success</h4>
+          <p class="popup-message">{{ profileSaveMessage }}</p>
+          <button class="popup-close-btn" (click)="closeProfileSuccessPopup()">Continue</button>
+        </div>
+      </div>
+
+      <div class="error-box" *ngIf="!profileSaved && profileSaveMessage">{{ profileSaveMessage }}</div>
+
+      <form class="profile-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+        <label>First Name</label>
+        <input type="text" formControlName="firstName" placeholder="Enter first name">
+
+        <label>Last Name</label>
+        <input type="text" formControlName="lastName" placeholder="Enter last name">
+
+        <label>Middle Initial (Optional)</label>
+        <input type="text" maxlength="1" formControlName="middleInitial" placeholder="M">
+
+        <label>Birthdate</label>
+        <input type="date" formControlName="birthdate">
+
+        <label>Age</label>
+        <input type="text" formControlName="age" placeholder="Auto-calculated" readonly>
+
+        <label>Cellphone Number</label>
+        <input type="text" formControlName="cellphoneNumber" placeholder="e.g. 09xxxxxxxxx">
+
+        <label>Profile Picture</label>
+        <input type="file" accept="image/*" (change)="onProfileImageSelected($event)">
+
+        <button type="submit" class="profile-save-btn">Setup</button>
+      </form>
+    </div>
+
+    <div class="card" *ngIf="currentView === 'notifications'">
+      <h2><span class="heading-highlight">Notification Logs</span></h2>
+      <p class="small-text">View all status updates for your submitted complaints.</p>
+
+      <div class="error-box" *ngIf="notificationsError">{{ notificationsError }}</div>
+
+      <div class="loading-spinner" *ngIf="notificationsLoading">
+        <p>Loading notifications...</p>
+      </div>
+
+      <div class="notifications-table-wrapper" *ngIf="!notificationsLoading && notifications.length > 0">
+        <table class="notifications-table">
+          <thead>
+            <tr>
+              <th>Complaint Code</th>
+              <th>Action Type</th>
+              <th>Message</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let notification of paginatedNotifications"
+              [class.notification-clickable-row]="isActionReasonNotification(notification)"
+              (click)="openNotificationActionDetails(notification)"
+            >
+              <td class="complaint-code">
+                <button *ngIf="isActionReasonNotification(notification)" type="button" class="notification-link-btn">
+                  {{ notification.complaint_code }}
+                </button>
+                <span *ngIf="!isActionReasonNotification(notification)">
+                  {{ notification.complaint_code }}
+                </span>
+              </td>
+              <td class="action-type">{{ notification.action_type }}</td>
+              <td class="message">{{ notification.message }}</td>
+              <td class="date">{{ notification.created_at }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="status-pagination" *ngIf="notifications.length > 0">
+          <button
+            type="button"
+            class="status-page-btn"
+            [disabled]="isOnFirstNotificationsPage"
+            (click)="goToPreviousNotificationsPage()"
+          >
+            Previous
+          </button>
+          <span class="status-page-label">Page {{ currentNotificationsPage }} of {{ totalNotificationsPages }}</span>
+          <button
+            type="button"
+            class="status-page-btn"
+            [disabled]="isOnLastNotificationsPage"
+            (click)="goToNextNotificationsPage()"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-backdrop" *ngIf="selectedActionNotification">
+        <div class="popup-box popup-success report-reason-popup">
+          <div class="popup-icon"><span>!</span></div>
+          <h4 class="popup-title">{{ selectedActionTitle }}</h4>
+          <p class="popup-message">
+            Complaint Code: {{ selectedActionNotification?.complaint_code }}<br><br>
+            Reason: {{ selectedActionReason }}
+          </p>
+          <button class="popup-close-btn" (click)="closeNotificationActionDetails()">Close</button>
+        </div>
+      </div>
+
+      <div class="no-notifications" *ngIf="!notificationsLoading && notifications.length === 0">
+        <p>No notifications yet. Admin updates will appear here.</p>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<div class="contact-modal-backdrop" *ngIf="showContactModal" (click)="closeContactModal()">
+  <div class="contact-modal" (click)="$event.stopPropagation()">
+    <h2>Contact Us</h2>
+    <p><strong>Phone Number:</strong> 09686975778</p>
+    <p><strong>Email:</strong> eccms26@gmail.com</p>
+
+    <button type="button" class="contact-close-btn" (click)="closeContactModal()">Close</button>
+  </div>
+</div>
+
+<div class="help-modal-backdrop" *ngIf="showHelpModal" (click)="closeHelpModal()">
+  <div class="help-modal" (click)="$event.stopPropagation()">
+    <h2>User Manual</h2>
+    <p class="small-text">Follow this guide to use all user-side features of ECCMS.</p>
+
+    <h3>1. Set Up Your Profile</h3>
+    <ol>
+      <li>Click <strong>Profile</strong> in the sidebar.</li>
+      <li>Enter your First Name, Last Name, Middle Initial (optional), Birthdate, and Cellphone Number.</li>
+      <li>Upload a profile picture if you want to personalize your account.</li>
+      <li>Click <strong>Setup</strong> to save your profile information.</li>
+    </ol>
+
+    <h3>2. File a New Complaint</h3>
+    <ol>
+      <li>Click <strong>File a Complaint</strong> in the sidebar.</li>
+      <li>Select the complaint category. If you choose <strong>Others</strong>, enter a custom category.</li>
+      <li>Enter the location and full description of your concern.</li>
+      <li>Optionally attach an image using <strong>Take Photo</strong> (camera) or <strong>Choose from Files/Photos</strong>.</li>
+      <li>Click <strong>Submit</strong> and keep the complaint code shown in the success message for tracking.</li>
+    </ol>
+
+    <h3>3. Track Complaint Status</h3>
+    <ol>
+      <li>Click <strong>Status</strong>.</li>
+      <li>Review all complaints you submitted, including complaint code, category, location, and date.</li>
+      <li>Use <strong>Previous</strong> and <strong>Next</strong> to browse pages when you have many records.</li>
+      <li>Monitor each complaint status such as <strong>Reported</strong>, <strong>Completed</strong>, <strong>Already in Work</strong>, and <strong>Reopened</strong>.</li>
+    </ol>
+
+    <h3>4. Reopen a Completed Complaint</h3>
+    <ol>
+      <li>In <strong>Status</strong>, click the <strong>Complaint Code</strong> of a complaint with status <strong>Completed</strong>.</li>
+      <li>A popup will appear asking for your reason.</li>
+      <li>Enter why you want to reopen the complaint, then click <strong>Reopen Complaint</strong>.</li>
+      <li>The complaint status will change to <strong>Reopened</strong> and it will be sent back to admin for review.</li>
+    </ol>
+
+    <h3>5. View Notification Logs</h3>
+    <ol>
+      <li>Click <strong>Notifications</strong>.</li>
+      <li>Check the notification badge in the sidebar to see if you have new updates.</li>
+      <li>Review updates sent when an admin changes your complaint status.</li>
+      <li>For <strong>Reported</strong> or <strong>Deleted</strong> notifications, click the notification row to view the admin's reason.</li>
+      <li>Check details such as complaint code, action type, message, and date.</li>
+    </ol>
+
+    <h3>6. Update Profile Any Time</h3>
+    <ol>
+      <li>Go back to <strong>Profile</strong>.</li>
+      <li>Edit details or change your profile picture as needed.</li>
+      <li>Click <strong>Setup</strong> again to save updates.</li>
+    </ol>
+
+    <h3>7. Read Help, About, and Contact</h3>
+    <ol>
+      <li>Click <strong>Help</strong> to open this user guide any time.</li>
+      <li>Click <strong>About us</strong> to view the system background and development team information.</li>
+      <li>Click <strong>Contact Us</strong> to view the support phone number and email.</li>
+    </ol>
+
+    <h3>8. Log Out Securely</h3>
+    <ol>
+      <li>Click <strong>Logout</strong> when you are done.</li>
+      <li>Always log out on shared or public devices.</li>
+    </ol>
+
+    <button type="button" class="help-close-btn" (click)="closeHelpModal()">Close</button>
+  </div>
+</div>
+
+<div class="about-modal-backdrop" *ngIf="showAboutModal" (click)="closeAboutModal()">
+  <div class="about-modal" (click)="$event.stopPropagation()">
+    <h2>About Us</h2>
+
+    <p>
+      The Electronic City Complaint Management System (ECCMS) is a web-based platform developed to improve the efficiency and organization of handling community complaints and concerns. In many communities, reporting issues such as public disturbances, damaged infrastructure, sanitation problems, and other civic concerns can be difficult due to slow manual processes, lack of proper documentation, and limited communication between residents and local administrators. The ECCMS was designed to address these challenges by providing a centralized and accessible digital system that simplifies the process of submitting, recording, and managing complaints.
+    </p>
+
+    <p>
+      The primary purpose of the Electronic City Complaint Management System is to create a structured and reliable platform where citizens can easily report issues affecting their community. Through this system, users are able to submit complaints electronically by providing necessary details such as the category of the complaint, location, and description of the issue. Once submitted, the complaint is securely stored in the system database and can be reviewed by authorized administrators through a dedicated administrative dashboard. This organized approach allows administrators to monitor complaints, evaluate reports, and manage responses more effectively.
+    </p>
+
+    <p>
+      In addition to simplifying the complaint submission process, the system promotes transparency and accountability in the handling of community concerns. By digitizing the reporting and tracking process, the ECCMS ensures that complaints are properly documented and accessible for review. This reduces the risk of complaints being lost, ignored, or improperly handled. The system also helps administrators maintain records of reported issues, which can assist in identifying recurring problems within the community and developing more effective solutions.
+    </p>
+
+    <p>
+      The Electronic City Complaint Management System was also developed with data privacy and security in mind. User information and complaint records are handled responsibly and stored within a controlled environment to protect the confidentiality of individuals who submit reports. The system is designed to support responsible communication between residents and administrators while maintaining the integrity of the information collected.
+    </p>
+
+    <p>
+      Furthermore, the development of this system aims to demonstrate the potential of information technology in improving public service and community management. By integrating modern web technologies and database systems, the ECCMS showcases how digital platforms can support more efficient governance and better interaction between citizens and authorities.
+    </p>
+
+    <p>
+      The Electronic City Complaint Management System (ECCMS) was programmed and developed by the following members of the development team:
+    </p>
+
+    <p>Christian</p>
+    <p>Ashley</p>
+    <p>Zihan</p>
+
+    <p>
+      As the programmers of the system, the team collaborated in designing, developing, and implementing the different components of the platform, including the user interface, database structure, and system functionalities. Their goal was to create a system that is reliable, user-friendly, and capable of supporting the needs of both citizens and administrators.
+    </p>
+
+    <p>
+      Through the development of the Electronic City Complaint Management System, the team hopes to contribute to the improvement of digital complaint management and demonstrate how technology can be used to strengthen communication, transparency, and service delivery within communities.
+    </p>
+
+    <button type="button" class="about-close-btn" (click)="closeAboutModal()">Close</button>
+  </div>
+</div>

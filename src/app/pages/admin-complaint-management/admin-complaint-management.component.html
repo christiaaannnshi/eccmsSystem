@@ -1,0 +1,90 @@
+<div class="admin-container">
+
+  <aside class="sidebar">
+    <div class="profile-avatar-wrap">
+      <img *ngIf="profileImagePreview" [src]="profileImagePreview" alt="Admin Profile Picture" class="profile-avatar">
+      <div *ngIf="!profileImagePreview" class="profile-avatar profile-avatar-placeholder">👤</div>
+      <p class="profile-name" *ngIf="displayName">{{ displayName }}</p>
+    </div>
+
+    <button routerLink="/admin-dashboard" routerLinkActive="active" class="menu-btn">Dashboard</button>
+    <button routerLink="/admin-complaints" routerLinkActive="active" class="menu-btn">Complaint</button>
+    <button routerLink="/admin-complaint-management" routerLinkActive="active" class="menu-btn">Manage Complaint</button>
+    <button routerLink="/admin-dashboard" [queryParams]="{ view: 'profile' }" routerLinkActive="active" class="menu-btn">Profile</button>
+
+    <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+  </aside>
+
+  <main class="main">
+    <h1 class="system-title">Electronic City Complaint Management System</h1>
+    <h2 class="page-title">Manage Complaint</h2>
+
+    <div class="content-box">
+      <div class="table-header">
+        <h3>Reported and Deleted Complaints</h3>
+        <button type="button" class="back-overview-btn" routerLink="/admin-dashboard">← Back to Overview</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Complaint Code</th>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Action</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of paginatedActions">
+            <td>
+              <button
+                *ngIf="canViewReportReason(a); else plainComplaintCode"
+                type="button"
+                class="complaint-code-btn"
+                (click)="openReportReason(a)"
+              >
+                {{ a.complaint_code }}
+              </button>
+              <ng-template #plainComplaintCode>{{ a.complaint_code }}</ng-template>
+            </td>
+            <td>{{ a.complaint_name }}</td>
+            <td>{{ a.location || 'N/A' }}</td>
+            <td>{{ a.action_type }}</td>
+            <td>{{ a.action_date }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="table-pagination" *ngIf="actions.length > 0">
+        <button
+          type="button"
+          class="page-btn"
+          [disabled]="isOnFirstActionsPage"
+          (click)="goToPreviousActionsPage()"
+        >
+          Previous
+        </button>
+        <span class="page-label">Page {{ currentActionsPage }} of {{ totalActionsPages }}</span>
+        <button
+          type="button"
+          class="page-btn"
+          [disabled]="isOnLastActionsPage"
+          (click)="goToNextActionsPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+
+    <div class="reason-modal-backdrop" *ngIf="selectedReasonAction" (click)="closeReportReason()">
+      <div class="reason-modal" (click)="$event.stopPropagation()">
+        <h3>Report Complaint Reason</h3>
+        <p><strong>Complaint Code:</strong> {{ selectedReasonAction.complaint_code }}</p>
+        <p class="reason-content">{{ selectedReasonAction.action_reason || 'No report reason available for this complaint.' }}</p>
+        <button type="button" class="reason-close-btn" (click)="closeReportReason()">Close</button>
+      </div>
+    </div>
+  </main>
+</div>
+

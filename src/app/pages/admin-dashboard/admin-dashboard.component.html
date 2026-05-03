@@ -1,0 +1,304 @@
+<div class="admin-container">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="profile-avatar-wrap">
+      <img *ngIf="profileImagePreview" [src]="profileImagePreview" alt="Admin Profile Picture" class="profile-avatar">
+      <div *ngIf="!profileImagePreview" class="profile-avatar profile-avatar-placeholder">👤</div>
+      <p class="profile-name" *ngIf="displayName">{{ displayName }}</p>
+    </div>
+
+    <button type="button" class="menu-btn" [class.active]="currentView === 'dashboard'" (click)="showDashboard()">Dashboard</button>
+    <button routerLink="/admin-complaints" routerLinkActive="active" class="menu-btn">Complaint</button>
+    <button routerLink="/admin-complaint-management" routerLinkActive="active" class="menu-btn">Manage Complaint</button>
+    <button type="button" class="menu-btn" [class.active]="currentView === 'profile'" (click)="showProfileSetup()">Profile</button>
+
+    <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="dashboard-top-logos" aria-label="System logos">
+      <img src="assets/eccmslogo.png" alt="ECCMS Logo" class="dashboard-top-logo" />
+      <img src="assets/icpep.png" alt="ICPEP Logo" class="dashboard-top-logo" />
+    </div>
+
+    <h1 class="system-title">
+      Electronic City Complaint Management System
+    </h1>
+
+    <h2 class="page-title">{{ currentView === 'dashboard' ? 'Admin Dashboard' : 'Profile Setup' }}</h2>
+
+    <div class="content-box" *ngIf="currentView === 'dashboard'">
+      <div class="cards">
+
+        <div class="card blue" (click)="viewComplaints()" style="cursor: pointer;">
+          <span class="card-icon">📄</span>
+          <h3>{{ total }}</h3>
+          <p>Total Complaints</p>
+          <div class="bottom blue-light"></div>
+        </div>
+
+        <div class="card green" (click)="viewCompletedComplaints()" style="cursor: pointer;">
+          <span class="card-icon">✅</span>
+          <h3>{{ solved }}</h3>
+          <p>Complaints Solve</p>
+          <div class="bottom green-light"></div>
+        </div>
+
+        <div class="card orange" (click)="viewReportedAndDeletedComplaints()" style="cursor: pointer;">
+          <span class="card-icon reported-icon">⚠️</span>
+          <h3>{{ pending }}</h3>
+          <p>Reported Complaints</p>
+          <div class="bottom orange-light"></div>
+        </div>
+
+        <div class="card orange-reopen" (click)="viewReopenedComplaints()" style="cursor: pointer;">
+          <span class="card-icon reopened-icon">⟳</span>
+          <h3>{{ reopened }}</h3>
+          <p>Reopened Complaints</p>
+          <div class="bottom orange-reopen-light"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- BOTTOM SECTION: Recent Complaints Table + Doughnut Chart -->
+    <div class="dashboard-bottom" *ngIf="currentView === 'dashboard' && dashboardSection === 'overview'">
+
+      <!-- Recent Complaints Table -->
+      <div class="recent-complaints-card">
+        <div class="section-header">
+          <h3 class="section-title">Recent Complaints</h3>
+          <button class="view-all-btn" (click)="viewComplaints()">View All →</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="complaints-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Complainant</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of recentComplaints; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>{{ c.complainant_name || c.name || c.email || 'N/A' }}</td>
+                <td class="subject-cell">{{ c.subject || c.complaint_subject || c.description || 'N/A' }}</td>
+                <td><span class="status-badge" [ngClass]="getStatusClass(c.status)">{{ c.status || 'N/A' }}</span></td>
+                <td>{{ (c.date_filed || c.created_at || c.date || '') | date:'MMM d, y' }}</td>
+              </tr>
+              <tr *ngIf="recentComplaints.length === 0">
+                <td colspan="5" class="empty-row">No complaints found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right Column: Doughnut + Bar Chart -->
+      <div class="chart-column">
+
+        <!-- Doughnut Chart -->
+        <div class="chart-card">
+          <h3 class="section-title">Complaint Status</h3>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="doughnutData"
+              [options]="doughnutOptions"
+              type="doughnut">
+            </canvas>
+          </div>
+          <div class="chart-legend-extra">
+            <div class="legend-item"><span class="dot orange"></span> Pending: {{ pending }}</div>
+            <div class="legend-item"><span class="dot green"></span> Solved: {{ solved }}</div>
+            <div class="legend-item"><span class="dot report-mixed"></span> Reported: {{ reported }}</div>
+            <div class="legend-item"><span class="dot deleted-only"></span> Deleted: {{ deleted }}</div>
+            <div class="legend-item"><span class="dot blue"></span> Total: {{ total }}</div>
+          </div>
+        </div>
+
+        <!-- Monthly Bar Chart -->
+        <div class="bar-chart-card">
+          <h3 class="section-title">Monthly Complaints</h3>
+          <div class="bar-chart-container">
+            <canvas baseChart
+              [data]="barData"
+              [options]="barOptions"
+              type="bar">
+            </canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- REOPENED COMPLAINTS SECTION -->
+    <div class="reopened-section" *ngIf="currentView === 'dashboard' && dashboardSection === 'reopened'">
+      <div class="reopened-table-card">
+        <div class="reopened-table-header">
+          <h2>Reopened Complaints Table</h2>
+          <button type="button" class="back-btn" (click)="backToOverview()">← Back to Overview</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="complaints-table reopened-complaints-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Complaint Code</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Complainant</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of reopenedPagedComplaints; let i = index">
+                <td>{{ (reopenedCurrentPage - 1) * reopenedPageSize + i + 1 }}</td>
+                <td>{{ c.complaint_code }}</td>
+                <td>{{ c.category }}</td>
+                <td>{{ c.location || 'N/A' }}</td>
+                <td class="subject-cell">{{ c.description }}</td>
+                <td>{{ (c.created_at || c.date_filed || '') | date:'MMM d, y' }}</td>
+                <td>
+                  <button type="button" class="status-action-btn" (click)="openReopenedModal(c)">{{ c.status }}</button>
+                </td>
+                <td>{{ c.user_id }}</td>
+              </tr>
+              <tr *ngIf="reopenedComplaints.length === 0">
+                <td colspan="8" class="empty-row">No reopened complaints found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="reopened-table-footer">
+          <button type="button" (click)="previousReopenedPage()" [disabled]="reopenedCurrentPage === 1">Previous</button>
+          <span class="page-info">{{ reopenedCurrentPage }} / {{ reopenedTotalPages }}</span>
+          <button type="button" (click)="nextReopenedPage()" [disabled]="reopenedCurrentPage === reopenedTotalPages">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REOPENED COMPLAINT ACTION MODAL -->
+    <div class="modal-backdrop" *ngIf="selectedReopened">
+      <div class="action-modal-layout has-reopen-panel">
+        <div class="action-modal">
+          <h3>Complaint Action</h3>
+          <p><strong>Code:</strong> {{ selectedReopened.complaint_code }}</p>
+          <p><strong>Name:</strong> {{ selectedReopened.category }}</p>
+          <p><strong>Location:</strong> {{ selectedReopened.location }}</p>
+          <p><strong>Description:</strong> {{ selectedReopened.description }}</p>
+
+          <div class="attached-image-wrap" *ngIf="selectedReopened.complaint_image">
+            <p><strong>Attached Picture:</strong></p>
+            <img [src]="selectedReopened.complaint_image" alt="Complaint evidence" class="attached-image" />
+          </div>
+
+          <p class="modal-success" *ngIf="reopenedActionMessage">{{ reopenedActionMessage }}</p>
+          <p class="modal-error" *ngIf="reopenedActionError">{{ reopenedActionError }}</p>
+
+          <div class="modal-actions">
+            <button type="button" class="complete-btn" (click)="markReopenedCompleted()">Completed</button>
+            <button type="button" class="inwork-btn" (click)="markReopenedInWork()">Already in Work</button>
+            <button type="button" class="report-btn" (click)="markReopenedAsReported()">Report</button>
+            <button type="button" class="delete-btn" (click)="requestDeleteReopened()">Delete</button>
+            <button type="button" class="cancel-btn" (click)="closeReopenedModal()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="reopen-reason-panel">
+          <h3>Reopen Reason</h3>
+          <p class="reopen-reason-help">This complaint was reopened by the user and sent back for admin review.</p>
+          <p class="reopen-reason-date" *ngIf="getReopenedRequestedAt()"><strong>Requested At:</strong> {{ getReopenedRequestedAt() }}</p>
+          <div class="reopen-reason-content">{{ getReopenedReason() || 'No reopen reason was provided by the user.' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REOPENED ACTION REASON MODAL -->
+    <div class="modal-backdrop" *ngIf="selectedReopened && reopenedActionReasonModalOpen">
+      <div class="action-modal report-reason-modal">
+        <h3>{{ reopenedActionReasonType === 'delete' ? 'Delete Complaint Reason' : 'Report Complaint Reason' }}</h3>
+        <p>{{ reopenedActionReasonType === 'delete'
+          ? 'Please enter why this complaint should be deleted. This reason will be shown to the user in Notifications.'
+          : 'Please enter why this complaint should be reported. This reason will be shown to the user in Notifications.' }}</p>
+
+        <label for="reopenReasonInput" class="reason-label">Reason</label>
+        <textarea id="reopenReasonInput" [(ngModel)]="reopenedActionReason" class="reason-input" rows="4"
+          [placeholder]="reopenedActionReasonType === 'delete' ? 'Enter delete reason' : 'Enter report reason'">
+        </textarea>
+
+        <p class="modal-error" *ngIf="reopenedActionReasonError">{{ reopenedActionReasonError }}</p>
+
+        <div class="modal-actions">
+          <button type="button" [class]="reopenedActionReasonType === 'delete' ? 'delete-btn' : 'report-btn'"
+            (click)="submitReopenedActionReason()">
+            {{ reopenedActionReasonType === 'delete' ? 'Confirm Delete' : 'Confirm Report' }}
+          </button>
+          <button type="button" class="cancel-btn" (click)="closeReopenedActionReasonModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" *ngIf="reopenedSuccessModalOpen" (click)="closeReopenedSuccessModal()">
+      <div class="action-success-modal" (click)="$event.stopPropagation()">
+        <h3>Action Successful</h3>
+        <p>{{ reopenedSuccessMessage || 'Complaint action was completed successfully.' }}</p>
+        <div class="modal-actions single-action">
+          <button type="button" class="ok-btn" (click)="closeReopenedSuccessModal()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-box profile-box" *ngIf="currentView === 'profile'">
+      <h2><span class="heading-highlight">Profile Setup</span></h2>
+      <p class="small-text">Set up your personal information for your admin account profile.</p>
+
+      <div class="popup-backdrop" *ngIf="profileSaved">
+        <div class="popup-box popup-success">
+          <div class="popup-icon">
+            <span>&#10003;</span>
+          </div>
+          <h4 class="popup-title">Success</h4>
+          <p class="popup-message">{{ profileSaveMessage }}</p>
+          <button class="popup-close-btn" (click)="closeProfileSuccessPopup()">Continue</button>
+        </div>
+      </div>
+
+      <div class="error-box" *ngIf="!profileSaved && profileSaveMessage">{{ profileSaveMessage }}</div>
+
+      <form class="profile-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+        <label>First Name</label>
+        <input type="text" formControlName="firstName" placeholder="Enter first name">
+
+        <label>Last Name</label>
+        <input type="text" formControlName="lastName" placeholder="Enter last name">
+
+        <label>Middle Initial (Optional)</label>
+        <input type="text" maxlength="1" formControlName="middleInitial" placeholder="M">
+
+        <label>Birthdate</label>
+        <input type="date" formControlName="birthdate">
+
+        <label>Age</label>
+        <input type="text" formControlName="age" placeholder="Auto-calculated" readonly>
+
+        <label>Cellphone Number</label>
+        <input type="text" formControlName="cellphoneNumber" placeholder="e.g. 09xxxxxxxxx">
+
+        <label>Profile Picture</label>
+        <input type="file" accept="image/*" (change)="onProfileImageSelected($event)">
+
+        <button type="submit" class="profile-save-btn">Setup</button>
+      </form>
+    </div>
+  </main>
+
+</div>
