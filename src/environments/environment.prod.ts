@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiBaseUrl: '/eccms-api'
+  apiBaseUrl: 'https://engrm.infinityfree.me/eccms-api'
 };
