@@ -4,8 +4,14 @@
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
-require_once('db.php');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+include 'db.php';
 
 $conn->query("CREATE TABLE IF NOT EXISTS complaint_actions (
     id INT AUTO_INCREMENT PRIMARY KEY,

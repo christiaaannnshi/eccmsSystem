@@ -1,69 +1,79 @@
 <?php
-// login.php
-// Checks user credentials
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-// reply to preflight and exit early
+// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
-require_once('db.php');
-
-// accept either JSON payload or traditional form data
-$input = file_get_contents('php://input');
-$body = json_decode($input, true);
-if (!is_array($body)) {
-    // fallback to $_POST when JSON parse failed / empty
-    $body = $_POST;
-}
-
-$identifier = isset($body['email']) ? $conn->real_escape_string($body['email']) : '';
-$password   = isset($body['password']) ? $conn->real_escape_string($body['password']) : '';
-
-if (!$identifier || !$password) {
-    echo json_encode(['status' => 'error', 'message' => 'Missing email/phone or password']);
+    http_response_code(200);
     exit;
 }
 
-// lookup row by identifier, then verify password hash
-$sql = "SELECT id, password FROM users WHERE email_or_phone='$identifier' LIMIT 1";
-$result = $conn->query($sql);
-if ($result && $result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $stored = $row['password'];
-    $ok = false;
+include("db.php");
 
-    // check against hashed value first
-    if (password_verify($password, $stored)) {
-        $ok = true;
-    } elseif ($password === $stored) {
-        // legacy account: password stored in plain text
-        $ok = true;
-        // upgrade the hash for future logins
-        $newhash = password_hash($password, PASSWORD_DEFAULT);
-        $conn->query("UPDATE users SET password='$newhash' WHERE id=" . (int)$row['id']);
-    }
+$data = json_decode(file_get_contents("php://input"), true);
 
-    if ($ok) {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Login successful',
-            'user_id' => (int)$row['id']
-        ]);
-    } else {
-        // debugging information logged to server error log
-        error_log("login_failed: identifier=$identifier, supplied='$password', stored='$stored'");
-        echo json_encode(['status' => 'error', 'message' => 'Invalid credentials']);
-    }
-} else {
-    error_log("login_no_user: identifier=$identifier");
-    echo json_encode(['status' => 'error', 'message' => 'Invalid credentials']);
+if (!$data || !isset($data['email']) || !isset($data['password'])) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Invalid input"
+    ]);
+    exit;
 }
 
+$email = trim($data['email']);
+$password = $data['password'];
+
+// ✅ ONLY SELECT COLUMNS THAT EXIST
+$stmt = $conn->prepare("
+    SELECT id, email_or_phone, password 
+    FROM users 
+    WHERE email_or_phone = ?
+");
+
+$stmt->bind_param("s", $email);
+
+if (!$stmt->execute()) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Database query failed: " . $stmt->error
+    ]);
+    exit;
+}
+
+$result = $stmt->get_result();
+
+if (!$result || $result->num_rows === 0) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "User not found"
+    ]);
+    exit;
+}
+
+$user = $result->fetch_assoc();
+
+// ✅ VERIFY HASHED PASSWORD
+if (password_verify($password, $user['password'])) {
+
+    echo json_encode([
+        "status" => "success",
+        "message" => "Login successful",
+        "user_id" => $user['id']
+    ]);
+
+} else {
+
+    echo json_encode([
+        "status" => "error",
+        "message" => "Invalid password"
+    ]);
+}
+
+$stmt->close();
 $conn->close();
 ?>

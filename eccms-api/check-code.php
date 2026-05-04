@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once('db.php');
+include 'db.php';
 
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true);

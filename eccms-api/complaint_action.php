@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once('db.php');
+include 'db.php';
 
 $conn->query("CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -53,20 +53,7 @@ if (!is_array($body)) {
     $body = $_POST;
 }
 
-$actionInput = strtolower(trim((string)($body['action'] ?? '')));
-$actionAliases = [
-    'reported' => 'report',
-    'report' => 'report',
-    'deleted' => 'delete',
-    'delete' => 'delete',
-    'completed' => 'complete',
-    'complete' => 'complete',
-    'in work' => 'in_work',
-    'already in work' => 'in_work',
-    'in-work' => 'in_work',
-    'in_work' => 'in_work'
-];
-$action = $actionAliases[$actionInput] ?? $actionInput;
+$action = strtolower(trim((string)($body['action'] ?? '')));
 $complaint_code = trim((string)($body['complaint_code'] ?? ''));
 $reason = trim((string)($body['reason'] ?? ''));
 
@@ -152,60 +139,23 @@ if ($userId > 0) {
         'skip_notification_insert' => true
     ];
 
-    $mailDispatch = [
-        'attempted' => false,
-        'status' => 'not_attempted',
-        'response' => null,
-        'error' => null
-    ];
-
     $mailCh = curl_init('http://localhost/eccms-api/send_complaint_notification.php');
     if ($mailCh !== false) {
-        $mailDispatch['attempted'] = true;
         curl_setopt($mailCh, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($mailCh, CURLOPT_POST, true);
         curl_setopt($mailCh, CURLOPT_POSTFIELDS, json_encode($mailPayload));
         curl_setopt($mailCh, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($mailCh, CURLOPT_TIMEOUT, 10);
-
-        $mailResponse = curl_exec($mailCh);
-        $mailError = curl_error($mailCh);
-        $mailHttpCode = (int)curl_getinfo($mailCh, CURLINFO_HTTP_CODE);
-
-        if ($mailResponse === false) {
-            $mailDispatch['status'] = 'failed';
-            $mailDispatch['error'] = $mailError ?: 'Unknown cURL error';
-        } else {
-            $mailDispatch['response'] = $mailResponse;
-            $decodedResponse = json_decode($mailResponse, true);
-            if (is_array($decodedResponse) && ($decodedResponse['status'] ?? '') === 'success') {
-                $mailDispatch['status'] = 'sent';
-            } else {
-                $mailDispatch['status'] = ($mailHttpCode >= 200 && $mailHttpCode < 300) ? 'mail_service_error' : 'http_error';
-                $mailDispatch['error'] = is_array($decodedResponse)
-                    ? (string)($decodedResponse['message'] ?? 'Mail service returned an error')
-                    : ('Mail service returned HTTP ' . $mailHttpCode);
-            }
-        }
-
+        curl_exec($mailCh);
         curl_close($mailCh);
-    } else {
-        $mailDispatch['status'] = 'failed';
-        $mailDispatch['error'] = 'Failed to initialize cURL';
     }
 }
 
-$response = [
+echo json_encode([
     'status' => 'success',
     'message' => 'Complaint action updated successfully',
     'new_status' => $newStatus
-];
-
-if (isset($mailDispatch)) {
-    $response['mail_notification'] = $mailDispatch;
-}
-
-echo json_encode($response);
+]);
 
 $conn->close();
 ?>

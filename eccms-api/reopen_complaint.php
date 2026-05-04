@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once('db.php');
+include 'db.php';
 
 $conn->query("CREATE TABLE IF NOT EXISTS complaint_reopen_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,

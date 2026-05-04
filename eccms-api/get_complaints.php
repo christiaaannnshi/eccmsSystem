@@ -4,8 +4,14 @@
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
-require_once('db.php');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+include 'db.php';
 
 // Ensure complaint_image column exists for older databases.
 $columnCheck = $conn->query("SHOW COLUMNS FROM complaints LIKE 'complaint_image'");

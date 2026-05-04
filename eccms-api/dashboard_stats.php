@@ -1,37 +1,42 @@
 <?php
-// dashboard_stats.php
-// Returns dashboard statistics: total complaints, solved, pending
-
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 
-require_once('db.php');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
-// Get total complaints
-$total_sql = "SELECT COUNT(*) as total FROM complaints";
-$total_result = $conn->query($total_sql);
-$total = $total_result->fetch_assoc()['total'];
+include 'db.php';
 
-// Get solved complaints (assuming status column with 'Solved')
-$solved_sql = "SELECT COUNT(*) as solved FROM complaints WHERE status = 'Solved'";
-$solved_result = $conn->query($solved_sql);
-$solved = $solved_result->fetch_assoc()['solved'];
+$total = 0;
+$solved = 0;
+$pending = 0;
 
-// Get pending complaints (assuming status 'Pending')
-$pending_sql = "SELECT COUNT(*) as pending FROM complaints WHERE status = 'Pending'";
-$pending_result = $conn->query($pending_sql);
-$pending = $pending_result->fetch_assoc()['pending'];
+$totalResult = $conn->query("SELECT COUNT(*) AS total FROM complaints");
+if ($totalResult) {
+    $total = (int) ($totalResult->fetch_assoc()['total'] ?? 0);
+}
 
-// Get reopened complaints
-$reopened_sql = "SELECT COUNT(*) as reopened FROM complaints WHERE LOWER(status) = 'reopened'";
-$reopened_result = $conn->query($reopened_sql);
-$reopened = $reopened_result->fetch_assoc()['reopened'];
+$solvedResult = $conn->query("SELECT COUNT(*) AS solved FROM complaints WHERE LOWER(status) IN ('solved', 'completed')");
+if ($solvedResult) {
+    $solved = (int) ($solvedResult->fetch_assoc()['solved'] ?? 0);
+}
+
+$pendingResult = $conn->query("SELECT COUNT(*) AS pending FROM complaints WHERE LOWER(status) = 'reported'");
+if ($pendingResult) {
+    $pending = (int) ($pendingResult->fetch_assoc()['pending'] ?? 0);
+}
 
 echo json_encode([
-    'total' => (int)$total,
-    'solved' => (int)$solved,
-    'pending' => (int)$pending,
-    'reopened' => (int)$reopened
+    'status' => 'success',
+    'total' => $total,
+    'solved' => $solved,
+    'pending' => $pending
 ]);
 
 $conn->close();

@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once('db.php');
+include 'db.php';
 
 // Create notifications table if it doesn't exist
 $createTableSql = "CREATE TABLE IF NOT EXISTS notifications (

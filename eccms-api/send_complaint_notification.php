@@ -13,24 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require 'vendor/autoload.php';
 
-require_once('db.php');
+include 'db.php';
 
 $body = json_decode(file_get_contents('php://input'), true);
 $complaint_code = trim($body['complaint_code'] ?? '');
-$actionInput = strtolower(trim($body['action'] ?? ''));
-$actionAliases = [
-    'reported' => 'report',
-    'report' => 'report',
-    'deleted' => 'delete',
-    'delete' => 'delete',
-    'completed' => 'complete',
-    'complete' => 'complete',
-    'in work' => 'in_work',
-    'already in work' => 'in_work',
-    'in-work' => 'in_work',
-    'in_work' => 'in_work'
-];
-$action = $actionAliases[$actionInput] ?? $actionInput;
+$action = strtolower(trim($body['action'] ?? ''));
 $reason = trim((string)($body['reason'] ?? ''));
 $skipNotificationInsert = filter_var($body['skip_notification_insert'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
