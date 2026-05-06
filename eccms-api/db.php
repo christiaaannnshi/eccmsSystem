@@ -1,8 +1,8 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "eccms_db";   // <-- make sure this matches your database name
+$host = "sqlXXX.epizy.com";  // Replace with your InfinityFree MySQL host
+$user = "epiz_XXXXXXX";     // Replace with your InfinityFree database username
+$pass = "your_password";     // Replace with your InfinityFree database password
+$db   = "epiz_XXXXXXX_eccms_db";  // Replace with your InfinityFree database name
 
 $conn = new mysqli($host, $user, $pass, $db);
 
